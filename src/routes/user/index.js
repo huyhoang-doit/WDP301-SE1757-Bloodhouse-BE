@@ -14,6 +14,7 @@ router.use(checkAuth);
 
 // Admin routes
 router.post("/admin/create", checkRole(USER_ROLE.ADMIN), userController.createUser);
+router.patch("/admin/update/:id", checkRole(USER_ROLE.ADMIN), userController.adminUpdateUser);
 
 router.get("/", userController.getUsers);
 router.get("/me", userController.getUserInfo);

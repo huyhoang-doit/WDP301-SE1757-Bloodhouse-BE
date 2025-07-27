@@ -5988,4 +5988,162 @@ components:
       properties:
         message:
           type: string
+  /user/admin/update/{id}:
+    patch:
+      tags:
+        - Users
+      summary: Update user information (Admin only)
+      description: Admin can update any user's information including role, status, and profile level
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: User ID to update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  description: User's full name
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  format: password
+                  description: User's new password (min 6 characters)
+                  example: newpassword123
+                role:
+                  type: string
+                  enum: [ADMIN, MANAGER, DOCTOR, NURSE, TRANSPORTER, MEMBER]
+                  description: User's role in the system
+                  example: MANAGER
+                sex:
+                  type: string
+                  enum: [male, female, other]
+                  description: User's gender
+                  example: MALE
+                yob:
+                  type: string
+                  format: date
+                  description: User's year of birth
+                  example: "1990-01-01"
+                phone:
+                  type: string
+                  description: User's phone number
+                  example: "0123456789"
+                address:
+                  type: string
+                  description: User's address
+                  example: "123 Main St, City"
+                idCard:
+                  type: string
+                  description: User's ID card number
+                  example: "123456789012"
+                bloodId:
+                  type: string
+                  format: uuid
+                  description: User's blood group ID
+                  example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                isAvailable:
+                  type: boolean
+                  description: Whether the user is available
+                  example: true
+                status:
+                  type: string
+                  enum: [ACTIVE, INACTIVE, VERIFIED, BANNED]
+                  description: User's account status
+                  example: VERIFIED
+                profileLevel:
+                  type: integer
+                  enum: [1, 2]
+                  description: User's profile completion level
+                  example: 2
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: User updated successfully
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        format: uuid
+                        example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                      fullName:
+                        type: string
+                        example: John Doe
+                      email:
+                        type: string
+                        example: john.doe@example.com
+                      role:
+                        type: string
+                        example: MANAGER
+                      sex:
+                        type: string
+                        example: MALE
+                      yob:
+                        type: string
+                        format: date
+                        example: "1990-01-01"
+                      phone:
+                        type: string
+                        example: "0123456789"
+                      address:
+                        type: string
+                        example: "123 Main St, City"
+                      idCard:
+                        type: string
+                        example: "123456789012"
+                      bloodId:
+                        type: string
+                        example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                      isAvailable:
+                        type: boolean
+                        example: true
+                      status:
+                        type: string
+                        example: VERIFIED
+                      profileLevel:
+                        type: integer
+                        example: 2
+                      avatar:
+                        type: string
+                        example: "https://example.com/avatar.jpg"
+        '400':
+          description: Bad request - Invalid input data
+        '401':
+          description: Unauthorized - Invalid or missing token
+        '403':
+          description: Forbidden - User is not an admin
+        '404':
+          description: User not found
+        '409':
+          description: Conflict - Email, phone, or ID card already exists
+        '500':
+          description: Internal server error
 

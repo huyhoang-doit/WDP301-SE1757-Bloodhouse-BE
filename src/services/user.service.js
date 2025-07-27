@@ -19,6 +19,151 @@ const bloodDonationModel = require("../models/bloodDonation.model");
 const { validatePhone, validateEmail, validateIdCard } = require("../utils/validation");
 
 class UserService {
+  // Admin cập nhật thông tin user
+  adminUpdateUser = async (
+    userId,
+    {
+      fullName,
+      email,
+      password,
+      role,
+      sex,
+      yob,
+      phone,
+      address,
+      idCard,
+      bloodId,
+      isAvailable,
+      status,
+      profileLevel,
+    }
+  ) => {
+    // Check if user exists
+    const user = await userModel.findById(userId);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    // Validate email if changed
+    if (email && email !== user.email) {
+      if (!validateEmail(email)) {
+        throw new BadRequestError("Email is invalid");
+      }
+      const existingEmail = await userModel.findOne({
+        email: email.trim().toLowerCase(),
+        _id: { $ne: userId },
+      });
+      if (existingEmail) {
+        throw new BadRequestError("Email already exists");
+      }
+    }
+
+    // Validate phone if changed
+    if (phone && phone !== user.phone) {
+      if (!validatePhone(phone)) {
+        throw new BadRequestError("Phone number is invalid");
+      }
+      const existingPhone = await userModel.findOne({
+        phone: phone.trim(),
+        _id: { $ne: userId },
+      });
+      if (existingPhone) {
+        throw new BadRequestError("Phone number already exists");
+      }
+    }
+
+    // Validate idCard if changed
+    if (idCard && idCard !== user.idCard) {
+      if (!validateIdCard(idCard)) {
+        throw new BadRequestError("ID card number is invalid");
+      }
+      const existingIdCard = await userModel.findOne({
+        idCard: idCard.trim(),
+        _id: { $ne: userId },
+      });
+      if (existingIdCard) {
+        throw new BadRequestError("ID card number already exists");
+      }
+    }
+
+    // Validate role if changed
+    if (role && !Object.values(USER_ROLE).includes(role)) {
+      throw new BadRequestError(
+        `Role must be one of: ${Object.values(USER_ROLE).join(", ")}`
+      );
+    }
+
+    // Validate sex if changed
+    if (sex && !Object.values(SEX).includes(sex)) {
+      throw new BadRequestError(
+        `Sex must be one of: ${Object.values(SEX).join(", ")}`
+      );
+    }
+
+    // Validate yob if changed
+    if (yob && isNaN(Date.parse(yob))) {
+      throw new BadRequestError("Year of birth (yob) must be a valid date");
+    }
+
+    // Validate status if changed
+    if (status && !Object.values(USER_STATUS).includes(status)) {
+      throw new BadRequestError(
+        `Status must be one of: ${Object.values(USER_STATUS).join(", ")}`
+      );
+    }
+
+    // Create update object with only changed fields
+    const updateData = {
+      ...(fullName && { fullName: fullName.trim() }),
+      ...(email && { email: email.trim().toLowerCase() }),
+      ...(role && { role }),
+      ...(sex && { sex }),
+      ...(yob && { yob: new Date(yob) }),
+      ...(phone && { phone: phone.trim() }),
+      ...(address && { address: address.trim() }),
+      ...(idCard && { idCard: idCard.trim() }),
+      ...(bloodId && { bloodId }),
+      ...(typeof isAvailable !== 'undefined' && { isAvailable }),
+      ...(status && { status }),
+      ...(profileLevel && { profileLevel }),
+    };
+
+    // Hash password if provided
+    if (password) {
+      if (password.length < 6) {
+        throw new BadRequestError("Password must be at least 6 characters");
+      }
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    // Update user
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true }
+    ).select("-password -verifyOTP -verifyExpires -resetPasswordToken -resetPasswordExpires");
+
+    return getInfoData({
+      fields: [
+        "_id",
+        "fullName",
+        "email",
+        "role",
+        "sex",
+        "yob",
+        "phone",
+        "address",
+        "idCard",
+        "bloodId",
+        "isAvailable",
+        "status",
+        "profileLevel",
+        "avatar",
+      ],
+      object: updatedUser,
+    });
+  };
+
   // Admin tạo user mới
   createUser = async ({
     fullName,
