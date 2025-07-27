@@ -1,15 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../../controllers/user.controller");
-const { checkAuth } = require("../../auth/checkAuth");
+const { checkAuth, checkRole } = require("../../auth/checkAuth");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
+const { USER_ROLE } = require("../../constants/enum");
 
 router.get("/nearby", userController.findNearbyUsers); // Không cần auth
 router.post("/forgot-password", userController.forgotPassword); // Không cần auth
 router.post("/reset-password", userController.resetPassword); // Không cần auth
 
 router.use(checkAuth);
+
+// Admin routes
+router.post("/admin/create", checkRole(USER_ROLE.ADMIN), userController.createUser);
 
 router.get("/", userController.getUsers);
 router.get("/me", userController.getUserInfo);

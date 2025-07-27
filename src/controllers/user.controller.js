@@ -5,6 +5,15 @@ const asyncHandler = require("../helpers/asyncHandler");
 const userService = require("../services/user.service");
 
 class UserController {
+  // Admin tạo user mới
+  createUser = asyncHandler(async (req, res) => {
+    const result = await userService.createUser(req.body);
+    new CREATED({
+      message: "User created successfully",
+      data: result,
+    }).send(res);
+  });
+
   // Tìm kiếm người dùng gần vị trí
   findNearbyUsers = asyncHandler(async (req, res) => {
     const { lat, lng, distance, bloodType } = req.query;

@@ -16,8 +16,126 @@ const mailService = require("./mail.service");
 const { getPaginatedData } = require("../helpers/mongooseHelper");
 const FPT_AI_OCR = require("../helpers/fptOcrHelper");
 const bloodDonationModel = require("../models/bloodDonation.model");
+const { validatePhone, validateEmail, validateIdCard } = require("../utils/validation");
 
 class UserService {
+  // Admin tạo user mới
+  createUser = async ({
+    fullName,
+    email,
+    password,
+    role,
+    sex,
+    yob,
+    phone,
+    address,
+    idCard,
+    bloodId,
+    isAvailable = true,
+  }) => {
+    // Validate required fields
+    if (!fullName || typeof fullName !== "string" || fullName.trim() === "") {
+      throw new BadRequestError(
+        "Full name is required and must be a non-empty string"
+      );
+    }
+
+    if (!email || !validateEmail(email)) {
+      throw new BadRequestError("Email is required and must be valid");
+    }
+
+    if (!password || typeof password !== "string" || password.length < 6) {
+      throw new BadRequestError(
+        "Password is required and must be at least 6 characters"
+      );
+    }
+
+    if (!role || !Object.values(USER_ROLE).includes(role)) {
+      throw new BadRequestError(
+        `Role must be one of: ${Object.values(USER_ROLE).join(", ")}`
+      );
+    }
+
+    // Validate optional fields
+    if (sex && !Object.values(SEX).includes(sex)) {
+      throw new BadRequestError(
+        `Sex must be one of: ${Object.values(SEX).join(", ")}`
+      );
+    }
+
+    if (yob && isNaN(Date.parse(yob))) {
+      throw new BadRequestError("Year of birth (yob) must be a valid date");
+    }
+
+    if (phone && !validatePhone(phone)) {
+      throw new BadRequestError("Phone number is invalid");
+    }
+
+    if (idCard && !validateIdCard(idCard)) {
+      throw new BadRequestError("Id card number is invalid");
+    }
+
+    // Check if email, phone, idCard exists
+    const existingUser = await userModel.findOne({
+      email: email.trim().toLowerCase(),
+    });
+    if (existingUser) {
+      throw new BadRequestError("Email already exists");
+    }
+
+    if (phone) {
+      const existingPhone = await userModel.findOne({ phone: phone.trim() });
+      if (existingPhone) {
+        throw new BadRequestError("Phone number already exists");
+      }
+    }
+
+    if (idCard) {
+      const existingIdCard = await userModel.findOne({ idCard: idCard.trim() });
+      if (existingIdCard) {
+        throw new BadRequestError("Id card number already exists");
+      }
+    }
+
+    // Hash password and create new user
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = await userModel.create({
+      fullName: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      password: passwordHash,
+      role,
+      sex,
+      yob: yob ? new Date(yob) : undefined,
+      phone: phone ? phone.trim() : undefined,
+      address: address ? address.trim() : undefined,
+      idCard: idCard ? idCard.trim() : undefined,
+      bloodId,
+      isAvailable,
+      status: USER_STATUS.VERIFIED, // Admin created accounts are automatically verified
+      profileLevel: 2, // Admin created accounts start at level 2
+    });
+
+    return getInfoData({
+      fields: [
+        "_id",
+        "fullName",
+        "email",
+        "role",
+        "sex",
+        "yob",
+        "phone",
+        "address",
+        "idCard",
+        "bloodId",
+        "isAvailable",
+        "status",
+        "profileLevel",
+      ],
+      object: newUser,
+    });
+  };
+
   // Tìm kiếm người dùng gần vị trí
   findNearbyUsers = async ({ lat, lng, distance, bloodType }) => {
     const maxDistance = parseFloat(distance) * 1000; // Chuyển km thành mét

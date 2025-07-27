@@ -350,6 +350,126 @@ paths:
                   message:
                     type: string
                     example: Unauthorized
+  /user/admin/create:
+    post:
+      tags:
+        - Users
+      summary: Create a new user (Admin only)
+      description: Admin can create new users with different roles in the system
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fullName
+                - email
+                - password
+                - role
+              properties:
+                fullName:
+                  type: string
+                  description: User's full name
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  description: User's email address
+                  example: john.doe@example.com
+                password:
+                  type: string
+                  format: password
+                  description: User's password (min 6 characters)
+                  example: password123
+                role:
+                  type: string
+                  enum: [ADMIN, MANAGER, DOCTOR, NURSE, TRANSPORTER, MEMBER]
+                  description: User's role in the system
+                  example: MANAGER
+                sex:
+                  type: string
+                  enum: [male, female, other]
+                  description: User's gender
+                  example: MALE
+                yob:
+                  type: string
+                  format: date
+                  description: User's year of birth
+                  example: "1990-01-01"
+                phone:
+                  type: string
+                  description: User's phone number
+                  example: "0123456789"
+                address:
+                  type: string
+                  description: User's address
+                  example: "123 Main St, City"
+                idCard:
+                  type: string
+                  description: User's ID card number
+                  example: "123456789012"
+                bloodId:
+                  type: string
+                  format: uuid
+                  description: User's blood group ID
+                  example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                isAvailable:
+                  type: boolean
+                  description: Whether the user is available
+                  default: true
+                  example: true
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: User created successfully
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        format: uuid
+                        example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                      fullName:
+                        type: string
+                        example: John Doe
+                      email:
+                        type: string
+                        example: john.doe@example.com
+                      role:
+                        type: string
+                        example: MANAGER
+                      status:
+                        type: string
+                        example: VERIFIED
+                      profileLevel:
+                        type: integer
+                        example: 2
+        '400':
+          description: Bad request - Invalid input data
+        '401':
+          description: Unauthorized - Invalid or missing token
+        '403':
+          description: Forbidden - User is not an admin
+        '409':
+          description: Conflict - Email, phone, or ID card already exists
+        '500':
+          description: Internal server error
   /user/nearby:
     get:
       summary: Find users near a location
@@ -4919,6 +5039,8 @@ paths:
           description: Forbidden (requires manager role)
         "404":
           description: Facility not found
+
+  
 
 components:
   securitySchemes:

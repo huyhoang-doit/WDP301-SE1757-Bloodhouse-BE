@@ -180,15 +180,15 @@ const swaggerUiOptions = {
 // Setup all Swagger routes function
 const setupSwaggerRoutes = (app) => {
   // Thêm middleware để force HTTPS trong production
-  app.use(["/api-docs", "/*/docs"], (req, res, next) => {
-    if (process.env.NODE_ENV === "production") {
-      if (req.headers["x-forwarded-proto"] !== "https") {
-        // Redirect to HTTPS
-        return res.redirect(`https://${req.headers.host}${req.url}`);
-      }
-    }
-    next();
-  });
+  // app.use(["/api-docs", "/*/docs"], (req, res, next) => {
+  //   if (process.env.NODE_ENV === "production") {
+  //     if (req.headers["x-forwarded-proto"] !== "https") {
+  //       // Redirect to HTTPS
+  //       return res.redirect(`https://${req.headers.host}${req.url}`);
+  //     }
+  //   }
+  //   next();
+  // });
 
   // Main API documentation
   app.use("/api-docs", swaggerUi.serve);
