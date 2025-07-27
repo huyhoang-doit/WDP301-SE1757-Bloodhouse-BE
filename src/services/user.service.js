@@ -10,6 +10,7 @@ const {
   SEX,
   USER_ROLE,
   BLOOD_DONATION_STATUS,
+  STAFF_POSITION,
 } = require("../constants/enum");
 const crypto = require("crypto");
 const mailService = require("./mail.service");
@@ -17,8 +18,61 @@ const { getPaginatedData } = require("../helpers/mongooseHelper");
 const FPT_AI_OCR = require("../helpers/fptOcrHelper");
 const bloodDonationModel = require("../models/bloodDonation.model");
 const { validatePhone, validateEmail, validateIdCard } = require("../utils/validation");
+const facilityStaffService = require("./facilityStaff.service");
+const facilityStaffModel = require("../models/facilityStaff.model");
 
 class UserService {
+  // Admin xem chi tiết thông tin user
+  adminGetUserDetail = async (userId) => {
+    // Tìm user và populate bloodId
+    const user = await userModel
+      .findById(userId)
+      .select("-password -verifyOTP -verifyExpires -resetPasswordToken -resetPasswordExpires")
+      .populate("bloodId", "name type");
+
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+
+    // Lấy thông tin facility staff nếu user là staff
+    let facilityStaffInfo = null;
+    const staffRoles = [USER_ROLE.MANAGER, USER_ROLE.DOCTOR, USER_ROLE.NURSE, USER_ROLE.TRANSPORTER];
+    
+    if (staffRoles.includes(user.role)) {
+      facilityStaffInfo = await facilityStaffModel
+        .findOne({
+          userId: user._id,
+          isDeleted: { $ne: true }
+        })
+        .populate("facilityId", "name address contactPhone contactEmail");
+    }
+
+    // Lấy thống kê hiến máu nếu là member
+    let donationStats = null;
+    if (user.role === USER_ROLE.MEMBER) {
+      donationStats = await this.getDonationStats(userId);
+    }
+
+    // Tạo response object
+    const userDetail = {
+      ...user.toObject(),
+      facilityStaffInfo: facilityStaffInfo ? {
+        position: facilityStaffInfo.position,
+        assignedAt: facilityStaffInfo.assignedAt,
+        facility: facilityStaffInfo.facilityId ? {
+          id: facilityStaffInfo.facilityId._id,
+          name: facilityStaffInfo.facilityId.name,
+          address: facilityStaffInfo.facilityId.address,
+          contactPhone: facilityStaffInfo.facilityId.contactPhone,
+          contactEmail: facilityStaffInfo.facilityId.contactEmail,
+        } : null
+      } : null,
+      donationStats
+    };
+
+    return userDetail;
+  };
+
   // Admin cập nhật thông tin user
   adminUpdateUser = async (
     userId,
@@ -134,6 +188,35 @@ class UserService {
         throw new BadRequestError("Password must be at least 6 characters");
       }
       updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    // Xử lý thay đổi role và facility staff
+    if (role && role !== user.role) {
+      const staffRoleMapping = {
+        [USER_ROLE.MANAGER]: STAFF_POSITION.MANAGER,
+        [USER_ROLE.DOCTOR]: STAFF_POSITION.DOCTOR,
+        [USER_ROLE.NURSE]: STAFF_POSITION.NURSE,
+        [USER_ROLE.TRANSPORTER]: STAFF_POSITION.TRANSPORTER,
+      };
+
+      // Nếu role cũ là staff role, xóa facility staff cũ
+      if (staffRoleMapping[user.role]) {
+        const existingStaff = await facilityStaffModel.findOne({
+          userId,
+          isDeleted: { $ne: true }
+        });
+        if (existingStaff) {
+          await facilityStaffService.deleteFacilityStaff(existingStaff._id);
+        }
+      }
+
+      // Nếu role mới là staff role, tạo facility staff mới
+      if (staffRoleMapping[role]) {
+        await facilityStaffService.createFacilityStaff({
+          userId,
+          position: staffRoleMapping[role],
+        });
+      }
     }
 
     // Update user
@@ -260,6 +343,21 @@ class UserService {
       status: USER_STATUS.VERIFIED, // Admin created accounts are automatically verified
       profileLevel: 2, // Admin created accounts start at level 2
     });
+
+    // Tự động tạo facility staff cho các role tương ứng
+    const staffRoleMapping = {
+      [USER_ROLE.MANAGER]: STAFF_POSITION.MANAGER,
+      [USER_ROLE.DOCTOR]: STAFF_POSITION.DOCTOR,
+      [USER_ROLE.NURSE]: STAFF_POSITION.NURSE,
+      [USER_ROLE.TRANSPORTER]: STAFF_POSITION.TRANSPORTER,
+    };
+
+    if (staffRoleMapping[role]) {
+      await facilityStaffService.createFacilityStaff({
+        userId: newUser._id,
+        position: staffRoleMapping[role],
+      });
+    }
 
     return getInfoData({
       fields: [

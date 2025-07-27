@@ -6146,5 +6146,141 @@ components:
       properties:
         message:
           type: string
-  
+  /user/admin/detail/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user detail information (Admin only)
+      description: Admin can view detailed information of any user including facility staff info and donation stats
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: User ID to get details
+      responses:
+        '200':
+          description: User detail retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: User detail retrieved successfully
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        format: uuid
+                        example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                      fullName:
+                        type: string
+                        example: John Doe
+                      email:
+                        type: string
+                        example: john.doe@example.com
+                      role:
+                        type: string
+                        example: MANAGER
+                      sex:
+                        type: string
+                        example: MALE
+                      yob:
+                        type: string
+                        format: date
+                        example: "1990-01-01"
+                      phone:
+                        type: string
+                        example: "0123456789"
+                      address:
+                        type: string
+                        example: "123 Main St, City"
+                      idCard:
+                        type: string
+                        example: "123456789012"
+                      bloodId:
+                        type: object
+                        properties:
+                          _id:
+                            type: string
+                            example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                          name:
+                            type: string
+                            example: "A+"
+                          type:
+                            type: string
+                            example: "A_POSITIVE"
+                      isAvailable:
+                        type: boolean
+                        example: true
+                      status:
+                        type: string
+                        example: VERIFIED
+                      profileLevel:
+                        type: integer
+                        example: 2
+                      avatar:
+                        type: string
+                        example: "https://example.com/avatar.jpg"
+                      facilityStaffInfo:
+                        type: object
+                        nullable: true
+                        properties:
+                          position:
+                            type: string
+                            example: MANAGER
+                          assignedAt:
+                            type: string
+                            format: date-time
+                            example: "2024-03-20T10:30:00Z"
+                          facility:
+                            type: object
+                            nullable: true
+                            properties:
+                              id:
+                                type: string
+                                example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                              name:
+                                type: string
+                                example: "Blood Donation Center"
+                              address:
+                                type: string
+                                example: "456 Hospital St"
+                              contactPhone:
+                                type: string
+                                example: "0987654321"
+                              contactEmail:
+                                type: string
+                                example: "contact@bdc.com"
+                      donationStats:
+                        type: object
+                        nullable: true
+                        properties:
+                          completedDonations:
+                            type: integer
+                            example: 5
+                          latestDonationDate:
+                            type: string
+                            format: date-time
+                            example: "2024-03-15T09:00:00Z"
+        '401':
+          description: Unauthorized - Invalid or missing token
+        '403':
+          description: Forbidden - User is not an admin
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error
 

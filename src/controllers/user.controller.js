@@ -5,6 +5,15 @@ const asyncHandler = require("../helpers/asyncHandler");
 const userService = require("../services/user.service");
 
 class UserController {
+  // Admin xem chi tiết thông tin user
+  adminGetUserDetail = asyncHandler(async (req, res) => {
+    const result = await userService.adminGetUserDetail(req.params.id);
+    new OK({
+      message: "User detail retrieved successfully",
+      data: result,
+    }).send(res);
+  });
+
   // Admin cập nhật thông tin user
   adminUpdateUser = asyncHandler(async (req, res) => {
     const result = await userService.adminUpdateUser(req.params.id, req.body);
