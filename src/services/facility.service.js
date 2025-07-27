@@ -1,3 +1,5 @@
+"use strict";
+
 const { BadRequestError } = require("../configs/error.response");
 const {
   STAFF_POSITION,
@@ -255,14 +257,213 @@ class FacilityService {
     return result;
   };
 
-  updateFacility = async (id, data) => {
+  updateFacility = async (
+    id,
+    {
+      name,
+      address,
+      longitude,
+      latitude,
+      contactPhone,
+      contactEmail,
+      managerId,
+      doctorIds = [],
+      nurseIds = [],
+      isActive,
+    },
+    file
+  ) => {
     try {
-      const result = await facilityModel.update(id, data);
-      return {
-        result,
+      // 1. Check if facility exists
+      const facility = await facilityModel.findById(id);
+      if (!facility) {
+        throw new BadRequestError(FACILITY_MESSAGE.FACILITY_NOT_FOUND);
+      }
+
+      // 2. Upload ảnh mới nếu có
+      let image = null;
+      if (file) {
+        const result = await uploadSingleImage({ file, folder: "facility" });
+        image = result.url;
+      }
+
+      // 3. Update facility info
+      const updateData = {
+        ...(name && { name }),
+        ...(address && { address }),
+        ...(longitude && latitude && {
+          location: {
+            type: "Point",
+            coordinates: [longitude, latitude],
+          },
+        }),
+        ...(contactPhone && { contactPhone }),
+        ...(contactEmail && { contactEmail }),
+        ...(typeof isActive !== 'undefined' && { isActive }),
       };
+
+      const updatedFacility = await facilityModel.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true }
+      );
+
+      // 4. Update main image if new image uploaded
+      if (image) {
+        await facilityImageModel.findOneAndUpdate(
+          { facilityId: id, isMain: true },
+          { url: image },
+          { upsert: true }
+        );
+      }
+
+      // 5. Handle staff updates
+      doctorIds = doctorIds ? (Array.isArray(doctorIds) ? doctorIds : JSON.parse(doctorIds)) : [];
+      nurseIds = nurseIds ? (Array.isArray(nurseIds) ? nurseIds : JSON.parse(nurseIds)) : [];
+
+      // Get current staff
+      const currentStaff = await facilityStaffModel.find({ 
+        facilityId: id,
+        isDeleted: { $ne: true }
+      });
+
+      // Update manager if provided
+      if (managerId) {
+        const currentManager = currentStaff.find(staff => staff.position === STAFF_POSITION.MANAGER);
+        
+        // Remove current manager if different
+        if (currentManager && currentManager.userId.toString() !== managerId) {
+          await facilityStaffModel.findByIdAndUpdate(
+            currentManager._id,
+            { 
+              facilityId: null,
+              isDeleted: true,
+              assignedAt: null
+            }
+          );
+        }
+
+        // Assign new manager
+        if (!currentManager || currentManager.userId.toString() !== managerId) {
+          const newManager = await facilityStaffModel.findOne({
+            userId: managerId,
+            facilityId: { $exists: false },
+            isDeleted: { $ne: true },
+            position: STAFF_POSITION.MANAGER,
+          });
+
+          if (!newManager) {
+            throw new BadRequestError(FACILITY_STAFF_MESSAGE.MANAGER_NOT_FOUND);
+          }
+
+          await facilityStaffModel.findByIdAndUpdate(
+            newManager._id,
+            {
+              facilityId: id,
+              assignedAt: new Date(),
+              isDeleted: false
+            }
+          );
+        }
+      }
+
+      // Update doctors
+      if (doctorIds.length > 0) {
+        const currentDoctors = currentStaff.filter(staff => staff.position === STAFF_POSITION.DOCTOR);
+        const currentDoctorIds = currentDoctors.map(doc => doc.userId.toString());
+        
+        // Remove doctors not in new list
+        const doctorsToRemove = currentDoctorIds.filter(docId => !doctorIds.includes(docId));
+        if (doctorsToRemove.length > 0) {
+          await facilityStaffModel.updateMany(
+            {
+              userId: { $in: doctorsToRemove },
+              facilityId: id,
+              position: STAFF_POSITION.DOCTOR
+            },
+            {
+              facilityId: null,
+              isDeleted: true,
+              assignedAt: null
+            }
+          );
+        }
+
+        // Add new doctors
+        const doctorsToAdd = doctorIds.filter(docId => !currentDoctorIds.includes(docId));
+        if (doctorsToAdd.length > 0) {
+          const newDoctors = await facilityStaffModel.find({
+            userId: { $in: doctorsToAdd },
+            facilityId: { $exists: false },
+            isDeleted: { $ne: true },
+            position: STAFF_POSITION.DOCTOR,
+          });
+
+          if (newDoctors.length !== doctorsToAdd.length) {
+            throw new BadRequestError(FACILITY_STAFF_MESSAGE.DOCTOR_NOT_FOUND);
+          }
+
+          await facilityStaffModel.updateMany(
+            { userId: { $in: doctorsToAdd } },
+            {
+              facilityId: id,
+              assignedAt: new Date(),
+              isDeleted: false
+            }
+          );
+        }
+      }
+
+      // Update nurses (similar to doctors)
+      if (nurseIds.length > 0) {
+        const currentNurses = currentStaff.filter(staff => staff.position === STAFF_POSITION.NURSE);
+        const currentNurseIds = currentNurses.map(nurse => nurse.userId.toString());
+        
+        // Remove nurses not in new list
+        const nursesToRemove = currentNurseIds.filter(nurseId => !nurseIds.includes(nurseId));
+        if (nursesToRemove.length > 0) {
+          await facilityStaffModel.updateMany(
+            {
+              userId: { $in: nursesToRemove },
+              facilityId: id,
+              position: STAFF_POSITION.NURSE
+            },
+            {
+              facilityId: null,
+              isDeleted: true,
+              assignedAt: null
+            }
+          );
+        }
+
+        // Add new nurses
+        const nursesToAdd = nurseIds.filter(nurseId => !currentNurseIds.includes(nurseId));
+        if (nursesToAdd.length > 0) {
+          const newNurses = await facilityStaffModel.find({
+            userId: { $in: nursesToAdd },
+            facilityId: { $exists: false },
+            isDeleted: { $ne: true },
+            position: STAFF_POSITION.NURSE,
+          });
+
+          if (newNurses.length !== nursesToAdd.length) {
+            throw new BadRequestError(FACILITY_STAFF_MESSAGE.NURSE_NOT_FOUND);
+          }
+
+          await facilityStaffModel.updateMany(
+            { userId: { $in: nursesToAdd } },
+            {
+              facilityId: id,
+              assignedAt: new Date(),
+              isDeleted: false
+            }
+          );
+        }
+      }
+
+      return updatedFacility;
     } catch (error) {
-      throw new BadRequestError(FACILITY_MESSAGE.UPDATE_FACILITY_FAILED);
+      throw new BadRequestError(error.message || FACILITY_MESSAGE.UPDATE_FACILITY_FAILED);
     }
   };
 

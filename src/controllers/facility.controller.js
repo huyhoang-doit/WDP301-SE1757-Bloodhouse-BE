@@ -1,3 +1,5 @@
+"use strict";
+
 const { OK, CREATED } = require("../configs/success.response");
 const { FACILITY_MESSAGE } = require("../constants/message");
 const asyncHandler = require("../helpers/asyncHandler");
@@ -39,7 +41,8 @@ class FacilityController {
   updateFacility = asyncHandler(async (req, res, next) => {
     const result = await facilityService.updateFacility(
       req.params.id,
-      req.body
+      req.body,
+      req.file
     );
     new OK({
       message: FACILITY_MESSAGE.UPDATE_FACILITY_SUCCESS,

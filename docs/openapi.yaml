@@ -2546,6 +2546,147 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Facility"
+    patch:
+      tags:
+        - Facility
+      summary: Update a facility
+      description: Update facility information including staff assignments
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+          description: Facility ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Facility name
+                address:
+                  type: string
+                  description: Facility address
+                longitude:
+                  type: number
+                  description: Facility longitude coordinate
+                latitude:
+                  type: number
+                  description: Facility latitude coordinate
+                contactPhone:
+                  type: string
+                  description: Contact phone number
+                contactEmail:
+                  type: string
+                  description: Contact email address
+                managerId:
+                  type: string
+                  description: ID of the manager user
+                doctorIds:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of doctor user IDs
+                nurseIds:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of nurse user IDs
+                isActive:
+                  type: boolean
+                  description: Facility active status
+                file:
+                  type: string
+                  format: binary
+                  description: Facility main image
+      responses:
+        '200':
+          description: Facility updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Facility updated successfully
+                  data:
+                    type: object
+                    properties:
+                      _id:
+                        type: string
+                        example: "60f1a5b3e5c7d2a1b3c4d5e6"
+                      name:
+                        type: string
+                        example: "Blood Donation Center"
+                      code:
+                        type: string
+                        example: "BDC001"
+                      address:
+                        type: string
+                        example: "123 Main St"
+                      location:
+                        type: object
+                        properties:
+                          type:
+                            type: string
+                            example: "Point"
+                          coordinates:
+                            type: array
+                            items:
+                              type: number
+                            example: [106.6297, 10.8231]
+                      contactPhone:
+                        type: string
+                        example: "0123456789"
+                      contactEmail:
+                        type: string
+                        example: "contact@bdc.com"
+                      isActive:
+                        type: boolean
+                        example: true
+                      mainImage:
+                        type: object
+                        properties:
+                          url:
+                            type: string
+                            example: "https://example.com/image.jpg"
+        '400':
+          description: Bad request - Invalid input data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: false
+                  code:
+                    type: integer
+                    example: 400
+                  message:
+                    type: string
+                    example: Invalid input data
+        '401':
+          description: Unauthorized - Invalid or missing token
+        '403':
+          description: Forbidden - User does not have required permissions
+        '404':
+          description: Facility not found
+        '500':
+          description: Internal server error
   /facility/delete/{id}:
     put:
       summary: Delete facility (soft delete)
