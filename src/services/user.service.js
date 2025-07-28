@@ -340,7 +340,7 @@ class UserService {
       idCard: idCard ? idCard.trim() : undefined,
       bloodId,
       isAvailable,
-      status: USER_STATUS.VERIFIED, // Admin created accounts are automatically verified
+      status: USER_STATUS.ACTIVE, // Admin created accounts are automatically verified
       profileLevel: 2, // Admin created accounts start at level 2
     });
 
