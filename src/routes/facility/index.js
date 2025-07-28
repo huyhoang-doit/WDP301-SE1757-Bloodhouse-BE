@@ -18,6 +18,6 @@ router.use(checkRole([USER_ROLE.ADMIN]));
 router.post("/", upload.single("image"), facilityController.createFacility);
 
 router.put("/:id", upload.single("image"), facilityController.updateFacility);
-router.put("delete/:id", facilityController.deleteFacility);
+router.put("/delete/:id", facilityController.deleteFacility);
 
 module.exports = router;

@@ -134,11 +134,13 @@ class FacilityService {
       managerId,
       doctorIds = [],
       nurseIds = [],
+      transporterIds = [],
     },
     file
   ) => {
     doctorIds = doctorIds ? JSON.parse(doctorIds) : [];
     nurseIds = nurseIds ? JSON.parse(nurseIds) : [];
+    transporterIds = transporterIds ? JSON.parse(transporterIds) : [];
     // 1. Upload ảnh nếu có
     let image = null;
     if (file) {
@@ -238,6 +240,28 @@ class FacilityService {
       staffEntries.push(...nurseEntries);
     }
 
+    // Validate transporters
+    if (Array.isArray(transporterIds) && transporterIds.length > 0) {
+      const existingTransporters = await facilityStaffModel.find({
+        userId: { $in: transporterIds },
+        facilityId: { $exists: false },
+        isDeleted: { $ne: true },
+        position: STAFF_POSITION.TRANSPORTER,
+      });
+
+      if (existingTransporters.length !== transporterIds.length) {
+        throw new BadRequestError(FACILITY_STAFF_MESSAGE.TRANSPORTER_NOT_FOUND);
+      }
+
+      const transporterEntries = transporterIds.map((transporterId) => ({
+        facilityId,
+        userId: transporterId,
+        position: STAFF_POSITION.TRANSPORTER,
+        assignedAt: new Date(),
+      }));
+      staffEntries.push(...transporterEntries);
+    }
+
     // Update all staff entries at once
     await facilityStaffModel.updateMany(
       { userId: { $in: staffEntries.map((entry) => entry.userId) } },
@@ -269,6 +293,7 @@ class FacilityService {
       managerId,
       doctorIds = [],
       nurseIds = [],
+      transporterIds = [],
       isActive,
     },
     file
@@ -320,6 +345,7 @@ class FacilityService {
       // 5. Handle staff updates
       doctorIds = doctorIds ? (Array.isArray(doctorIds) ? doctorIds : JSON.parse(doctorIds)) : [];
       nurseIds = nurseIds ? (Array.isArray(nurseIds) ? nurseIds : JSON.parse(nurseIds)) : [];
+      transporterIds = transporterIds ? (Array.isArray(transporterIds) ? transporterIds : JSON.parse(transporterIds)) : [];
 
       // Get current staff
       const currentStaff = await facilityStaffModel.find({ 
@@ -337,7 +363,7 @@ class FacilityService {
             currentManager._id,
             { 
               facilityId: null,
-              isDeleted: true,
+              // isDeleted: true,
               assignedAt: null
             }
           );
@@ -383,7 +409,7 @@ class FacilityService {
             },
             {
               facilityId: null,
-              isDeleted: true,
+              // isDeleted: true,
               assignedAt: null
             }
           );
@@ -430,7 +456,7 @@ class FacilityService {
             },
             {
               facilityId: null,
-              isDeleted: true,
+              // isDeleted: true,
               assignedAt: null
             }
           );
@@ -452,6 +478,53 @@ class FacilityService {
 
           await facilityStaffModel.updateMany(
             { userId: { $in: nursesToAdd } },
+            {
+              facilityId: id,
+              assignedAt: new Date(),
+              isDeleted: false
+            }
+          );
+        }
+      }
+
+      // Update transporters (similar to nurses and doctors)
+      if (transporterIds.length > 0) {
+        const currentTransporters = currentStaff.filter(staff => staff.position === STAFF_POSITION.TRANSPORTER);
+        const currentTransporterIds = currentTransporters.map(transporter => transporter.userId.toString());
+        
+        // Remove transporters not in new list
+        const transportersToRemove = currentTransporterIds.filter(transporterId => !transporterIds.includes(transporterId));
+        if (transportersToRemove.length > 0) {
+          await facilityStaffModel.updateMany(
+            {
+              userId: { $in: transportersToRemove },
+              facilityId: id,
+              position: STAFF_POSITION.TRANSPORTER
+            },
+            {
+              facilityId: null,
+              // isDeleted: true,
+              assignedAt: null
+            }
+          );
+        }
+
+        // Add new transporters
+        const transportersToAdd = transporterIds.filter(transporterId => !currentTransporterIds.includes(transporterId));
+        if (transportersToAdd.length > 0) {
+          const newTransporters = await facilityStaffModel.find({
+            userId: { $in: transportersToAdd },
+            facilityId: { $exists: false },
+            isDeleted: { $ne: true },
+            position: STAFF_POSITION.TRANSPORTER,
+          });
+
+          if (newTransporters.length !== transportersToAdd.length) {
+            throw new BadRequestError(FACILITY_STAFF_MESSAGE.TRANSPORTER_NOT_FOUND);
+          }
+
+          await facilityStaffModel.updateMany(
+            { userId: { $in: transportersToAdd } },
             {
               facilityId: id,
               assignedAt: new Date(),
