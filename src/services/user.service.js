@@ -477,9 +477,8 @@ class UserService {
       "fullName",
       "phone",
       "address",
-      "sex",
       "yob",
-      "isAvailable",
+      "bloodId",
     ];
     const updateData = Object.keys(profileData)
       .filter((key) => allowedFields.includes(key))
@@ -501,7 +500,7 @@ class UserService {
     const user = await userModel
       .findByIdAndUpdate(userId, updateData, { new: true })
       .select(
-        "_id fullName email phone street city country location sex yob isAvailable"
+        "_id fullName email phone street city country location sex yob isAvailable bloodId"
       );
     if (!user) {
       throw new NotFoundError("User not found");
@@ -514,13 +513,12 @@ class UserService {
         "phone",
         "address",
         "location",
-        "sex",
         "yob",
-        "isAvailable",
         "avatar",
         "profileLevel",
         "idCard",
         "address",
+        "bloodId",
       ],
       object: user,
     });
